@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuego Lento & Co. | Recetario de Cocina Argentina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3, .serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .grain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        .recipe-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .recipe-card:hover {
+            transform: translateY(-8px);
+        }
+        .recipe-card:hover .recipe-image {
+            transform: scale(1.05);
+        }
+        .recipe-image {
+            transition: transform 0.6s ease;
+        }
+        .step-active {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid #d97706;
+        }
+        .narrator-wave {
+            animation: wave 1.5s ease-in-out infinite;
+        }
+        @keyframes wave {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(1.5); }
+        }
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ingredient-check:checked + span {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+        .voice-selector {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        }
+        .speaking-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .image-upload-area {
+            border: 2px dashed #d6d3d1;
+            transition: all 0.3s ease;
+        }
+        .image-upload-area:hover {
+            border-color: #d97706;
+            background-color: #fff7ed;
+        }
+        .image-upload-area.has-image {
+            border-style: solid;
+            border-color: #16a34a;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 antialiased selection:bg-amber-200 selection:text-amber-900">
+    <div class="grain"></div>
+    
+    <!-- Header -->
+    <header class="fixed top-0 w-full bg-stone-50/90 backdrop-blur-md border-b border-stone-200 z-40 px-6 py-4">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-gradient-to-br from-amber-600 to-orange-700 rounded-full flex items-center justify-center text-white font-serif text-2xl shadow-lg">F</div>
+                <div>
+                    <h1 class="text-2xl font-bold text-stone-900 leading-none">Fuego Lento & Co.</h1>
+                    <p class="text-xs text-stone-500 tracking-widest uppercase mt-1">Cocina Argentina Tradicional</p>
+                </div>
+            </div>
+            <button onclick="openAddModal()" class="group flex items-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-full hover:bg-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <svg class="w-5 h-5 group-hover:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                <span class="font-medium text-sm">Agregar Receta</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-24 pb-12 px-6 max-w-6xl mx-auto">
+        <!-- Hero -->
+        <section class="mb-16 text-center fade-in">
+            <h2 class="text-5xl md:text-7xl font-bold text-stone-900 mb-6 leading-tight">
+                Sabores que<br>
+                <span class="text-amber-700 italic">trascienden</span>
+            </h2>
+            <p class="text-lg text-stone-600 max-w-2xl mx-auto leading-relaxed">
+                Recetas tradicionales argentinas de Doña Petrona C. de Gandulfo y clásicos de nuestro folklore gastronómico. 
+                Un recetario vivo que crece con tus propias creaciones.
+            </p>
+        </section>
+
+        <!-- Filters -->
+        <div class="flex flex-wrap justify-center gap-3 mb-12 fade-in">
+            <button onclick="filterRecipes('all')" class="filter-btn active px-6 py-2 rounded-full border border-stone-300 bg-stone-900 text-white text-sm font-medium transition-all hover:border-stone-900" data-category="all">Todas</button>
+            <button onclick="filterRecipes('carne')" class="filter-btn px-6 py-2 rounded-full border border-stone-300 text-stone-600 text-sm font-medium transition-all hover:border-stone-900 hover:text-stone-900" data-category="carne">Con Carne</button>
+            <button onclick="filterRecipes('vegetariano')" class="filter-btn px-6 py-2 rounded-full border border-stone-300 text-stone-600 text-sm font-medium transition-all hover:border-stone-900 hover:text-stone-900" data-category="vegetariano">Vegetarianas</button>
+            <button onclick="filterRecipes('dulce')" class="filter-btn px-6 py-2 rounded-full border border-stone-300 text-stone-600 text-sm font-medium transition-all hover:border-stone-900 hover:text-stone-900" data-category="dulce">Dulces</button>
+            <button onclick="filterRecipes('clasico')" class="filter-btn px-6 py-2 rounded-full border border-stone-300 text-stone-600 text-sm font-medium transition-all hover:border-stone-900 hover:text-stone-900" data-category="clasico">Clásicos</button>
+        </div>
+
+        <!-- Recipe Grid -->
+        <div id="recipeGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 fade-in">
+            <!-- Recipes injected by JS -->
+        </div>
+    </main>
+
+    <!-- Recipe Detail Modal -->
+    <div id="recipeModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onclick="closeRecipeModal()"></div>
+        <div class="absolute inset-y-0 right-0 w-full md:w-2/3 lg:w-1/2 bg-white shadow-2xl overflow-y-auto transform transition-transform duration-500 translate-x-full" id="recipePanel">
+            
+            <!-- Narrator Bar -->
+            <div class="sticky top-0 z-10 voice-selector border-b border-orange-200 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-full flex items-center justify-center text-white shadow-lg speaking-indicator" id="avatarContainer">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.983 5.983 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" id="statusIndicator"></div>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-orange-900">Tu Asistente de Cocina</span>
+                            <span class="text-xs text-orange-700" id="narratorStatus">Haz clic en un paso para escuchar</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleNarrator()" id="narratorToggle" class="p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-all text-orange-600 border border-orange-200" title="Activar/Desactivar voz">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.983 5.983 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                        <button onclick="closeRecipeModal()" class="p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-all text-stone-600 border border-stone-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Voice Settings -->
+                <div class="flex items-center gap-4 text-xs">
+                    <div class="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-full border border-orange-200">
+                        <span class="text-orange-800 font-medium">Voz:</span>
+                        <select id="voiceSelect" onchange="changeVoice()" class="bg-transparent border-none text-orange-900 font-medium focus:outline-none cursor-pointer">
+                            <option value="friendly">Amigable (recomendada)</option>
+                            <option value="calm">Tranquila y suave</option>
+                            <option value="cheerful">Alegre y energética</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2 text-orange-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span>Velocidad pausada para cocinar cómodamente</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <div id="recipeContent">
+                    <!-- Content injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Recipe Modal -->
+    <div id="addModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onclick="closeAddModal()"></div>
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 fade-in">
+            <h3 class="text-3xl font-bold text-stone-900 mb-2">Agregar Nueva Receta</h3>
+            <p class="text-stone-500 mb-6 text-sm">Comparte tu receta favorita con la comunidad de Fuego Lento & Co.</p>
+            
+            <form id="addRecipeForm" onsubmit="saveRecipe(event)" class="space-y-6">
+                <!-- Image Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">Foto de la receta</label>
+                    <div class="image-upload-area rounded-xl p-6 text-center cursor-pointer relative overflow-hidden" id="uploadArea" onclick="document.getElementById('imageInput').click()">
+                        <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                        <div id="uploadPlaceholder">
+                            <svg class="w-12 h-12 text-stone-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <p class="text-stone-600 font-medium">Haz clic para subir una foto</p>
+                            <p class="text-stone-400 text-xs mt-1">JPG, PNG o WebP. Máx 5MB.</p>
+                        </div>
+                        <img id="previewImage" class="hidden w-full h-48 object-cover rounded-lg" alt="Preview">
+                        <button type="button" id="removeImageBtn" onclick="removeImage(event)" class="hidden absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">Nombre de la receta</label>
+                    <input type="text" id="newTitle" required class="w-full px-4 py-3 rounded-lg border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all" placeholder="Ej: Milanesas a la napolitana">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-stone-700 mb-2">Categoría</label>
+                        <select id="newCategory" class="w-full px-4 py-3 rounded-lg border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all">
+                            <option value="carne">Con Carne</option>
+                            <option value="vegetariano">Vegetariana</option>
+                            <option value="dulce">Dulce</option>
+                            <option value="clasico">Clásico</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-stone-700 mb-2">Tiempo (minutos)</label>
+                        <input type="number" id="newTime" required class="w-full px-4 py-3 rounded-lg border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all" placeholder="45">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">Descripción</label>
+                    <textarea id="newDesc" required rows="3" class="w-full px-4 py-3 rounded-lg border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all" placeholder="Breve descripción de la receta..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">Ingredientes (uno por línea)</label>
+                    <textarea id="newIngredients" required rows="4" class="w-full px-4 py-3 rounded-lg border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all font-mono text-sm" placeholder="500g de carne picada&#10;2 cebollas&#10;3 huevos..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-stone-700 mb-2">Pasos (uno por línea)</label>
+                    <textarea id="newSteps" required rows="5" class="w-full px-4 py-3 rounded-lg border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all font-mono text-sm" placeholder="Picar la cebolla en cubos pequeños...&#10;Rehogar en manteca hasta dorar..."></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeAddModal()" class="flex-1 px-6 py-3 rounded-lg border border-stone-300 text-stone-700 font-medium hover:bg-stone-50 transition-all">Cancelar</button>
+                    <button type="submit" class="flex-1 px-6 py-3 rounded-lg bg-amber-700 text-white font-medium hover:bg-amber-800 transition-all shadow-lg">Guardar Receta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Base de datos de recetas con imágenes reales
+        const defaultRecipes = [
+            {
+                id: 1,
+                title: "Empanadas de Carne",
+                category: "carne",
+                time: 90,
+                difficulty: "Media",
+                image: "https://kimi-web-img.moonshot.cn/img/imag.bonviveur.com/53d1f85cf32e356a7abaff1a88bf5995d60357f4.jpg",
+                description: "La receta clásica de Doña Petrona. Masa casera con relleno jugoso de carne picada, cebolla, huevo duro y aceitunas.",
+                ingredients: [
+                    "500g de carne picada (nalga o cuadril)",
+                    "2 cebollas grandes picadas",
+                    "1 pimiento rojo picado",
+                    "2 huevos duros picados",
+                    "100g de aceitunas verdes sin carozo",
+                    "1 cucharada de comino",
+                    "1 cucharada de pimentón dulce",
+                    "Sal y pimienta a gusto",
+                    "Tapas de empanada (o masa casera)",
+                    "Manteca para pintar"
+                ],
+                steps: [
+                    "En una sartén con un poco de grasa, rehogar las cebollas y el pimiento hasta que estén transparentes.",
+                    "Agregar la carne picada y cocinar revolviendo hasta que cambie de color.",
+                    "Condimentar con comino, pimentón, sal y pimienta. Cocinar 5 minutos más.",
+                    "Retirar del fuego y dejar enfriar. Incorporar los huevos duros y las aceitunas picadas.",
+                    "Rellenar las tapas de empanada con 2 cucharadas del preparado.",
+                    "Hacer el repulgue tradicional (o usar tenedor).",
+                    "Pincelar con manteca derretida y hornear a 200°C hasta dorar (unos 20-25 minutos)."
+                ],
+                tips: "Doña Petrona recomendaba dejar enfriar completamente el relleno antes de armar las empanadas para que la masa no se ablande."
+            },
+            {
+                id: 2,
+                title: "Locro Criollo",
+                category: "clasico",
+                time: 180,
+                difficulty: "Alta",
+                image: "https://kimi-web-img.moonshot.cn/img/canalcocina.es/3be35663201f90d42def8a129ad92327b2afe67b.jpg",
+                description: "El plato patriótico por excelencia. Guiso sustancioso de maíz blanco, porotos, zapallo y carnes, ideal para los días fríos.",
+                ingredients: [
+                    "500g de maíz blanco partido (remojado desde la noche anterior)",
+                    "300g de porotos pallares o criollos",
+                    "300g de zapallo anco pelado y cortado",
+                    "200g de panceta ahumada cortada en cubos",
+                    "300g de roast beef o falda en trozos",
+                    "2 chorizos colorados",
+                    "1 cebolla grande picada",
+                    "1 puerro (parte blanca) en rodajas",
+                    "1 cucharada de pimentón dulce",
+                    "1 cucharada de ají molido",
+                    "1 cucharada de grasa de pella",
+                    "Sal a gusto"
+                ],
+                steps: [
+                    "En una olla grande, colocar el maíz y los porotos con el agua de remojo. Agregar más agua hasta cubrir.",
+                    "Cocinar a fuego lento durante 2 horas, revolviendo cada tanto para que no se pegue.",
+                    "En una sartén aparte, dorar la panceta con la grasa de pella. Agregar la cebolla y el puerro.",
+                    "Cuando las verduras estén doradas, agregar la carne y sellar por todos lados.",
+                    "Incorporar todo a la olla del locro junto con el zapallo.",
+                    "Agregar el pimentón y el ají molido. Rectificar sal.",
+                    "Cocinar 1 hora más hasta que el maíz reviente y forme una crema. Servir bien caliente."
+                ],
+                tips: "El secreto está en la cocción lenta y en revolver constantemente con cuchara de madera para lograr la textura cremosa característica."
+            },
+            {
+                id: 3,
+                title: "Humitas en Chala",
+                category: "vegetariano",
+                time: 120,
+                difficulty: "Media",
+                image: "https://kimi-web-img.moonshot.cn/img/www.196flavors.com/d94856aa9a087adb408c50d0110b82bfeceb2560.jpg",
+                description: "Delicadas humitas de choclo fresco envueltas en sus propias hojas, una receta norteña que Doña Petrona adaptó para todo el país.",
+                ingredients: [
+                    "12 choclos (maíz) frescos",
+                    "1 cebolla picada fina",
+                    "1 pimiento rojo picado",
+                    "100g de queso fresco en cubos",
+                    "2 huevos batidos",
+                    "1 taza de leche",
+                    "50g de manteca derretida",
+                    "Sal, pimienta y nuez moscada a gusto",
+                    "Hojas de choclo para envolver"
+                ],
+                steps: [
+                    "Desgranar los choclos y procesar los granos hasta obtener una pasta (no muy fina).",
+                    "Rehogar la cebolla y el pimiento en manteca hasta dorar.",
+                    "Mezclar la pasta de choclo con los huevos, leche, queso y las verduras rehogadas.",
+                    "Condimentar con sal, pimienta y una pizca de nuez moscada.",
+                    "Limpiar las hojas de choclo y blanquearlas 2 minutos en agua hirviendo.",
+                    "Colocar 2-3 cucharadas de la mezcla en el centro de cada hoja.",
+                    "Envolver formando paquetes y atar con hilos de la misma chala.",
+                    "Cocinar en agua hirviendo con sal durante 45 minutos. Servir caliente."
+                ],
+                tips: "Doña Petrona aconsejaba que la pasta de choclo tenga textura granulada, no completamente licuada, para mejor sabor."
+            },
+            {
+                id: 4,
+                title: "Matambre Arrollado",
+                category: "carne",
+                time: 150,
+                difficulty: "Alta",
+                image: "https://kimi-web-img.moonshot.cn/img/www.curiouscuisiniere.com/5cf5ed9b3140b938657ec4fdd5b2c1f5698ba89b.jpg",
+                description: "Clásico de las picadas argentinas. Matambre relleno de vegetales, huevos y especias, servido frío en finas rodajas.",
+                ingredients: [
+                    "1 matambre de 1.5kg (con o sin cuero)",
+                    "3 zanahorias cortadas en bastones",
+                    "2 huevos duros en rodajas",
+                    "100g de espinaca blanqueada",
+                    "4 dientes de ajo picados",
+                    "20 aceitunas verdes sin carozo",
+                    "1 cucharada de perejil picado",
+                    "2 cucharadas de vinagre",
+                    "1 litro de caldo de carne",
+                    "Sal, pimienta y ají molido"
+                ],
+                steps: [
+                    "Extendir el matambre sobre la mesa, lado de la carne hacia arriba. Limpiar bien de grasa.",
+                    "Condimentar generosamente con sal, pimienta, ají, ajo y perejil.",
+                    "Distribuir las zanahorias, huevos, espinaca y aceitunas picadas uniformemente.",
+                    "Enrollar firmemente formando un cilindro compacto. Atar con hilo de cocina cada 3 cm.",
+                    "En una olla, colocar el vinagre y el caldo. Llevar a hervor.",
+                    "Introducir el matambre y cocinar a fuego lento tapado por 2 horas.",
+                    "Dejar enfriar completamente en el líquido de cocción. Pesar con un peso en la heladera toda la noche.",
+                    "Cortar en rodajas finas y servir frío."
+                ],
+                tips: "Doña Petrona recomendaba dejarlo 24 horas en la heladera prensado para que quede firme y fácil de cortar."
+            },
+            {
+                id: 5,
+                title: "Tarta de Ricota",
+                category: "dulce",
+                time: 75,
+                difficulty: "Baja",
+                image: "https://kimi-web-img.moonshot.cn/img/vinomanos.com/0fbda83c8f42161406c91d59d9eb92a0c4396d86.jpg",
+                description: "Clásica tarta dulce de ricota, esponjosa y perfumada con cáscara de limón. Ideal para la merienda.",
+                ingredients: [
+                    "500g de ricota fresca",
+                    "200g de azúcar",
+                    "4 huevos",
+                    "100g de manteca derretida",
+                    "1 cucharada de ralladura de limón",
+                    "1 cucharadita de esencia de vainilla",
+                    "50g de harina",
+                    "Masa quebrada dulce (casera o comprada)",
+                    "Azúcar impalpable para decorar"
+                ],
+                steps: [
+                    "Precalentar el horno a 180°C. Forrar un molde desmontable con la masa quebrada.",
+                    "Pasar la ricota por un tamiz o procesar hasta obtener una pasta suave.",
+                    "Batir los huevos con el azúcar hasta disolver completamente.",
+                    "Agregar la manteca derretida, ralladura de limón y vainilla.",
+                    "Incorporar la ricota y la harina tamizada. Mezclar suavemente.",
+                    "Verter sobre la masa del molde. Alisar la superficie.",
+                    "Hornear por 40-45 minutos hasta que esté dorada y firme al tacto.",
+                    "Dejar enfriar antes de desmoldar. Espolvorear con azúcar impalpable."
+                ],
+                tips: "Para una ricota más suave, Doña Petrona sugería colarla en un paño fino durante 2 horas antes de usar."
+            },
+            {
+                id: 6,
+                title: "Pastel de Papas",
+                category: "carne",
+                time: 90,
+                difficulty: "Media",
+                image: "https://kimi-web-img.moonshot.cn/img/www.recetas-argentinas.com/849842d25359fba3e24497dc2105255a02a89251.jpg",
+                description: "Puré de papas cremoso cubriendo un relleno jugoso de carne picada con huevo duro y aceitunas.",
+                ingredients: [
+                    "1kg de papas (preferiblemente russet)",
+                    "500g de carne picada",
+                    "2 cebollas picadas",
+                    "2 huevos duros picados",
+                    "50g de aceitunas verdes",
+                    "100ml de leche caliente",
+                    "50g de manteca",
+                    "1 huevo crudo (para dorar)",
+                    "Nuez moscada, sal y pimienta"
+                ],
+                steps: [
+                    "Hervir las papas peladas y cortadas en trozos hasta que estén tiernas. Colar y reservar.",
+                    "En una sartén, rehogar las cebollas hasta transparentar. Agregar la carne y dorar.",
+                    "Condimentar el relleno con sal, pimienta y ají. Agregar los huevos y aceitunas. Reservar.",
+                    "Realizar el puré: aplastar las papas calientes con manteca y leche caliente hasta obtener consistencia cremosa.",
+                    "Condimentar el puré con sal, pimienta y nuez moscada a gusto.",
+                    "En un molde enmantecado, colocar la mitad del puré como base.",
+                    "Distribuir el relleno de carne uniformemente.",
+                    "Cubrir con el resto del puré, alisar y hacer dibujos con un tenedor.",
+                    "Pincelar con huevo batido y hornear a 200°C por 30 minutos hasta dorar."
+                ],
+                tips: "El puré debe quedar cremoso pero firme. Si queda muy blando, agregar un poco más de papa cocida rallada."
+            },
+            {
+                id: 7,
+                title: "Medialunas de Manteca",
+                category: "dulce",
+                time: 180,
+                difficulty: "Alta",
+                image: "https://kimi-web-img.moonshot.cn/img/cocinerosargentinos.com/3a169fce50839a0c3e485fbf6ce1ddbd0db92b60.jpeg",
+                description: "Facturas argentinas por excelencia. Medialunas hojaldradas y brillantes, perfectas para el mate o el café con leche.",
+                ingredients: [
+                    "500g de harina 0000",
+                    "250g de manteca pomada",
+                    "100g de azúcar",
+                    "25g de levadura fresca",
+                    "2 huevos",
+                    "100ml de leche tibia",
+                    "1 cucharadita de esencia de vainilla",
+                    "Ralladura de 1 limón",
+                    "Para el almíbar: 200g azúcar, 100ml agua, 2 cucharadas de miel"
+                ],
+                steps: [
+                    "Disolver la levadura en la leche tibia con una cucharada de azúcar. Dejar espumar 10 minutos.",
+                    "Formar una corona con la harina. En el centro colocar los huevos, azúcar, vainilla, ralladura y la levadura.",
+                    "Integrar suavemente sin amasar demasiado. Formar un bollo y dejar leudar 1 hora.",
+                    "Estirar la masa en rectángulo. Colocar la manteca pomada en el centro y cerrar como sobre.",
+                    "Dar 3 vueltas simples (estirar, doblar en tres, rotar 90°), descansando 20 min entre cada una.",
+                    "Estirar finalmente en 3mm de espesor. Cortar triángulos de 10cm de base.",
+                    "Enrollar desde la base hacia la punta formando las medialunas.",
+                    "Colocar en placa enmantecada, dejar leudar 30 min más.",
+                    "Hornear a 180°C por 15 minutos. Al salir, bañar con almíbar caliente."
+                ],
+                tips: "La temperatura ambiente es clave. Si hace calor, refrigerar la masa entre vueltas para que la manteca no se derrita."
+            },
+            {
+                id: 8,
+                title: "Milanesas a la Napolitana",
+                category: "carne",
+                time: 45,
+                difficulty: "Baja",
+                image: "https://kimi-web-img.moonshot.cn/img/resizer.glanacion.com/fcd7831c994844068ab643dae703f4f4d3789cb4.jpg",
+                description: "Reinterpretación argentina de la milanesa, cubierta con salsa de tomate, jamón y queso gratinado.",
+                ingredients: [
+                    "4 bifes de nalga o cuadril (150g cada uno)",
+                    "2 huevos batidos",
+                    "1 taza de pan rallado",
+                    "Harina para rebozar",
+                    "200g de salsa de tomate casera",
+                    "4 fetas de jamón cocido",
+                    "200g de queso mozzarella",
+                    "Orégano y aceitunas para decorar",
+                    "Aceite para freír"
+                ],
+                steps: [
+                    "Aplanar ligeramente los bifes entre dos láminas de film para que tengan 1cm de espesor.",
+                    "Pasar por harina, sacudir excedente. Luego por huevo batido y finalmente por pan rallado.",
+                    "Freír en aceite caliente (180°C) hasta dorar por ambos lados. Escurrir sobre papel absorbente.",
+                    "Colocar las milanesas en una placa para horno.",
+                    "Cubrir cada una con salsa de tomate, una feta de jamón y queso mozzarella rallado o en fetas.",
+                    "Espolvorear orégano y llevar a gratinar a horno fuerte (220°C) por 5-7 minutos.",
+                    "Servir inmediatamente con puré de papas o ensalada."
+                ],
+                tips: "Doña Petrona recomendaba que la salsa sea espesa para que no humedezca el rebozado crujiente."
+            },
+            {
+                id: 9,
+                title: "Chocotorta",
+                category: "dulce",
+                time: 30,
+                difficulty: "Baja",
+                image: "https://kimi-web-img.moonshot.cn/img/cdn.recetasderechupete.com/5deea3fed393e2083531d61a4c2856a86dc93dbf.jpg",
+                description: "Postre moderno argentino que se convirtió en clásico. Capas de galletitas de chocolate, dulce de leche y queso crema.",
+                ingredients: [
+                    "2 paquetes de galletitas Chocolinas (300g)",
+                    "500g de dulce de leche repostero",
+                    "500g de queso crema (tipo Philadelphia)",
+                    "200ml de leche fría para humedecer",
+                    "50g de chocolate semiamargo para rallar (opcional)"
+                ],
+                steps: [
+                    "En un bowl, batir el dulce de leche con el queso crema hasta obtener una crema homogénea y firme.",
+                    "Preparar un molde rectangular o redondo desmontable.",
+                    "Sumergir brevemente las galletitas en la leche fría (no empapar demasiado).",
+                    "Colocar una capa de galletitas en el fondo del molde, cubrir con una capa de la crema.",
+                    "Repetir alternando capas hasta terminar con crema (aproximadamente 4-5 capas).",
+                    "Alisar la última capa y decorar con ralladura de chocolate o galletitas trituradas.",
+                    "Llevar a la heladera por mínimo 4 horas (mejor toda la noche) para que tome consistencia.",
+                    "Desmoldar con cuidado y servir frío."
+                ],
+                tips: "Cuanto más tiempo repose en heladera, mejor sabor y textura. Se puede preparar con 2 días de anticipación."
+            }
+        ];
+
+        let recipes = [...defaultRecipes];
+        let currentRecipe = null;
+        let currentStep = 0;
+        let narratorActive = false;
+        let speechSynthesis = window.speechSynthesis;
+        let voices = [];
+        let currentVoiceProfile = 'friendly';
+        let uploadedImageBase64 = null;
+
+        // Perfiles de voz amigables
+        const voiceProfiles = {
+            friendly: {
+                rate: 0.9,
+                pitch: 1.15,
+                volume: 1,
+                name: "Amigable",
+                description: "Cálida y cercana, como una amiga en la cocina"
+            },
+            calm: {
+                rate: 0.8,
+                pitch: 1.05,
+                volume: 0.9,
+                name: "Tranquila",
+                description: "Suave y relajada, perfecta para cocinar sin prisa"
+            },
+            cheerful: {
+                rate: 0.95,
+                pitch: 1.25,
+                volume: 1,
+                name: "Alegre",
+                description: "Energética y entusiasta, ¡cocinar es divertido!"
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderRecipes();
+            loadVoices();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = loadVoices;
+            }
+        });
+
+        function loadVoices() {
+            voices = speechSynthesis.getVoices();
+        }
+
+        function selectFriendlyVoice() {
+            const profile = voiceProfiles[currentVoiceProfile];
+            const preferredVoices = ['Paulina', 'Mónica', 'Sabina', 'Helena', 'Google español', 'Microsoft Sabina', 'Microsoft Helena'];
+            
+            let selectedVoice = null;
+            for (let pref of preferredVoices) {
+                selectedVoice = voices.find(v => 
+                    v.name.toLowerCase().includes(pref.toLowerCase()) && 
+                    (v.lang.startsWith('es') || v.lang.includes('Spanish'))
+                );
+                if (selectedVoice) break;
+            }
+            
+            if (!selectedVoice) {
+                const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+                selectedVoice = spanishVoices.find(v => 
+                    !v.name.toLowerCase().includes('male') && 
+                    !v.name.toLowerCase().includes('masculine')
+                ) || spanishVoices[0];
+            }
+            
+            if (!selectedVoice) {
+                selectedVoice = voices.find(v => v.lang.startsWith('es')) || voices[0];
+            }
+            
+            return { voice: selectedVoice, profile };
+        }
+
+        function renderRecipes(filter = 'all') {
+            const grid = document.getElementById('recipeGrid');
+            grid.innerHTML = '';
+            
+            const filtered = filter === 'all' ? recipes : recipes.filter(r => r.category === filter);
+            
+            filtered.forEach((recipe, index) => {
+                const card = document.createElement('div');
+                card.className = 'recipe-card bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl border border-stone-100 cursor-pointer group';
+                card.style.animationDelay = `${index * 0.1}s`;
+                card.onclick = () => openRecipe(recipe.id);
+                
+                const categoryColors = {
+                    carne: 'bg-red-50 text-red-700',
+                    vegetariano: 'bg-green-50 text-green-700',
+                    dulce: 'bg-pink-50 text-pink-700',
+                    clasico: 'bg-amber-50 text-amber-700'
+                };
+                
+                const categoryLabels = {
+                    carne: 'Con Carne',
+                    vegetariano: 'Vegetariana',
+                    dulce: 'Dulce',
+                    clasico: 'Clásico'
+                };
+                
+                // Usar imagen real o placeholder
+                const imageHtml = recipe.image ? 
+                    `<img src="${recipe.image}" alt="${recipe.title}" class="recipe-image w-full h-full object-cover">` :
+                    `<div class="w-full h-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center text-stone-400"><svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></div>`;
+                
+                card.innerHTML = `
+                    <div class="h-56 bg-stone-100 relative overflow-hidden">
+                        ${imageHtml}
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div class="absolute top-4 right-4 ${categoryColors[recipe.category]} px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                            ${categoryLabels[recipe.category]}
+                        </div>
+                        <div class="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                            <span class="text-white text-sm font-medium flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                Ver receta completa
+                            </span>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex items-center gap-2 text-xs text-stone-500 mb-2">
+                            <span class="flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                ${recipe.time} min
+                            </span>
+                            <span>•</span>
+                            <span>${recipe.difficulty}</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-stone-900 mb-2 group-hover:text-amber-700 transition-colors font-serif">${recipe.title}</h3>
+                        <p class="text-stone-600 text-sm leading-relaxed line-clamp-2">${recipe.description}</p>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterRecipes(category) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if(btn.dataset.category === category) {
+                    btn.classList.add('bg-stone-900', 'text-white');
+                    btn.classList.remove('text-stone-600');
+                } else {
+                    btn.classList.remove('bg-stone-900', 'text-white');
+                    btn.classList.add('text-stone-600');
+                }
+            });
+            
+            renderRecipes(category);
+        }
+
+        function openRecipe(id) {
+            currentRecipe = recipes.find(r => r.id === id);
+            currentStep = 0;
+            
+            const modal = document.getElementById('recipeModal');
+            const panel = document.getElementById('recipePanel');
+            const content = document.getElementById('recipeContent');
+            
+            const imageHtml = currentRecipe.image ? 
+                `<img src="${currentRecipe.image}" alt="${currentRecipe.title}" class="w-full h-64 object-cover rounded-xl mb-6 shadow-lg">` : '';
+            
+            content.innerHTML = `
+                ${imageHtml}
+                
+                <div class="mb-8">
+                    <span class="inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-4">
+                        ${currentRecipe.category}
+                    </span>
+                    <h2 class="text-4xl font-bold text-stone-900 mb-4 font-serif">${currentRecipe.title}</h2>
+                    <p class="text-stone-600 text-lg leading-relaxed mb-6">${currentRecipe.description}</p>
+                    
+                    <div class="flex gap-6 text-sm text-stone-500 mb-8">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>${currentRecipe.time} minutos</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            <span>${currentRecipe.difficulty}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            <span>${currentRecipe.ingredients.length} ingredientes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 rounded-r-lg">
+                    <p class="text-amber-900 text-sm italic">
+                        <span class="font-bold">Consejo de Doña Petrona:</span> ${currentRecipe.tips}
+                    </p>
+                </div>
+
+                <div class="mb-10">
+                    <h3 class="text-2xl font-bold text-stone-900 mb-6 flex items-center gap-2">
+                        <span class="w-8 h-8 bg-stone-900 text-white rounded-full flex items-center justify-center text-sm">1</span>
+                        Ingredientes
+                    </h3>
+                    <ul class="space-y-3">
+                        ${currentRecipe.ingredients.map((ing, i) => `
+                            <li class="flex items-start gap-3 group cursor-pointer" onclick="toggleIngredient(this)">
+                                <input type="checkbox" class="ingredient-check mt-1 w-5 h-5 rounded border-stone-300 text-amber-600 focus:ring-amber-500 cursor-pointer" id="ing-${i}">
+                                <span class="text-stone-700 group-hover:text-stone-900 transition-colors">${ing}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-2xl font-bold text-stone-900 flex items-center gap-2">
+                            <span class="w-8 h-8 bg-stone-900 text-white rounded-full flex items-center justify-center text-sm">2</span>
+                            Preparación
+                        </h3>
+                        <div class="flex items-center gap-2 text-sm text-stone-500">
+                            <div class="w-32 h-2 bg-stone-200 rounded-full overflow-hidden">
+                                <div id="progressBar" class="h-full bg-amber-600 transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <span id="stepCounter">0/${currentRecipe.steps.length}</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4" id="stepsContainer">
+                        ${currentRecipe.steps.map((step, i) => `
+                            <div class="step-card p-6 rounded-xl border border-stone-200 transition-all duration-300 cursor-pointer hover:border-amber-300 ${i === 0 ? 'step-active' : 'bg-white'}" 
+                                 onclick="goToStep(${i})" id="step-${i}">
+                                <div class="flex gap-4">
+                                    <div class="flex-shrink-0 w-10 h-10 rounded-full ${i === 0 ? 'bg-amber-600 text-white' : 'bg-stone-200 text-stone-600'} flex items-center justify-center font-bold transition-colors" id="step-num-${i}">
+                                        ${i + 1}
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="text-stone-800 leading-relaxed ${i === 0 ? 'font-medium' : ''}">${step}</p>
+                                        ${i === 0 ? '<span class="text-xs text-amber-700 font-medium mt-2 inline-flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg> Click para escuchar</span>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="mt-8 flex gap-3">
+                        <button onclick="previousStep()" class="flex-1 px-6 py-3 rounded-lg border border-stone-300 text-stone-700 font-medium hover:bg-stone-50 transition-all disabled:opacity-50" id="prevBtn" disabled>
+                            Anterior
+                        </button>
+                        <button onclick="nextStep()" class="flex-1 px-6 py-3 rounded-lg bg-amber-700 text-white font-medium hover:bg-amber-800 transition-all shadow-lg" id="nextBtn">
+                            Siguiente Paso
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                panel.classList.remove('translate-x-full');
+            }, 10);
+            
+            setTimeout(() => {
+                if(narratorActive) {
+                    speakText(`¡Hola! Vamos a preparar ${currentRecipe.title}. Te guiaré paso a paso con una voz calmada para que puedas cocinar tranquilo. ¡Empecemos!`);
+                }
+            }, 800);
+        }
+
+        function closeRecipeModal() {
+            const panel = document.getElementById('recipePanel');
+            const modal = document.getElementById('recipeModal');
+            
+            speechSynthesis.cancel();
+            panel.classList.add('translate-x-full');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                currentRecipe = null;
+            }, 500);
+        }
+
+        function toggleIngredient(el) {
+            const checkbox = el.querySelector('input');
+            checkbox.checked = !checkbox.checked;
+        }
+
+        function goToStep(index) {
+            if(index < 0 || index >= currentRecipe.steps.length) return;
+            
+            document.querySelectorAll('.step-card').forEach((card, i) => {
+                if(i === index) {
+                    card.classList.add('step-active');
+                    card.classList.remove('bg-white');
+                    document.getElementById(`step-num-${i}`).classList.add('bg-amber-600', 'text-white');
+                    document.getElementById(`step-num-${i}`).classList.remove('bg-stone-200', 'text-stone-600');
+                } else {
+                    card.classList.remove('step-active');
+                    card.classList.add('bg-white');
+                    document.getElementById(`step-num-${i}`).classList.remove('bg-amber-600', 'text-white');
+                    document.getElementById(`step-num-${i}`).classList.add('bg-stone-200', 'text-stone-600');
+                }
+            });
+            
+            currentStep = index;
+            const progress = ((index + 1) / currentRecipe.steps.length) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('stepCounter').textContent = `${index + 1}/${currentRecipe.steps.length}`;
+            
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').textContent = index === currentRecipe.steps.length - 1 ? 'Finalizar' : 'Siguiente Paso';
+            
+            document.getElementById(`step-${index}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            if(narratorActive) {
+                setTimeout(() => speakStep(index), 300);
+            }
+        }
+
+        function nextStep() {
+            if(currentStep < currentRecipe.steps.length - 1) {
+                goToStep(currentStep + 1);
+            } else {
+                speechSynthesis.cancel();
+                speakText("¡Felicitaciones! Has completado la receta. Espero que disfrutes de este delicioso plato. ¡Buen provecho!");
+                document.getElementById('nextBtn').textContent = '¡Completado! 🎉';
+                document.getElementById('nextBtn').classList.add('bg-green-600');
+                document.getElementById('nextBtn').classList.remove('bg-amber-700');
+            }
+        }
+
+        function previousStep() {
+            if(currentStep > 0) {
+                goToStep(currentStep - 1);
+            }
+        }
+
+        function changeVoice() {
+            const select = document.getElementById('voiceSelect');
+            currentVoiceProfile = select.value;
+            const profile = voiceProfiles[currentVoiceProfile];
+            document.getElementById('narratorStatus').textContent = `Voz cambiada a: ${profile.name}`;
+            
+            if(narratorActive) {
+                speakText(`Perfecto. Ahora usaré una voz ${profile.name.toLowerCase()}. ${profile.description}`);
+            }
+        }
+
+        function toggleNarrator() {
+            narratorActive = !narratorActive;
+            const btn = document.getElementById('narratorToggle');
+            const status = document.getElementById('narratorStatus');
+            const avatar = document.getElementById('avatarContainer');
+            const indicator = document.getElementById('statusIndicator');
+            
+            if(narratorActive) {
+                btn.classList.add('bg-orange-100', 'text-orange-800', 'border-orange-300');
+                btn.classList.remove('bg-white', 'text-orange-600');
+                status.textContent = 'Narradora activa - Te guiaré con calma';
+                avatar.classList.add('speaking-indicator');
+                indicator.classList.remove('bg-stone-300');
+                indicator.classList.add('bg-green-500');
+                
+                if(currentRecipe) {
+                    speakText("Narradora activada. Estoy aquí para ayudarte. Haz clic en cualquier paso para escuchar las instrucciones.");
+                }
+            } else {
+                btn.classList.remove('bg-orange-100', 'text-orange-800', 'border-orange-300');
+                btn.classList.add('bg-white', 'text-orange-600');
+                status.textContent = 'Narradora en pausa - Click para activar';
+                avatar.classList.remove('speaking-indicator');
+                indicator.classList.remove('bg-green-500');
+                indicator.classList.add('bg-stone-300');
+                speechSynthesis.cancel();
+            }
+        }
+
+        function speakStep(index) {
+            if(!currentRecipe) return;
+            
+            const stepText = currentRecipe.steps[index];
+            const friendlyPrefixes = [
+                "Perfecto, ahora ",
+                "Muy bien, vamos a ",
+                "Excelente, siguiente paso: ",
+                "Listo, ahora debemos ",
+                "Sigamos adelante. "
+            ];
+            
+            let text = stepText;
+            if(index > 0 && Math.random() > 0.6) {
+                text = friendlyPrefixes[Math.floor(Math.random() * friendlyPrefixes.length)] + stepText.toLowerCase();
+            }
+            
+            if(index === Math.floor(currentRecipe.steps.length / 2)) {
+                text += ". ¡Vas por la mitad, sigue así!";
+            }
+            
+            speakText(text);
+        }
+
+        function speakText(text) {
+            speechSynthesis.cancel();
+            
+            const { voice, profile } = selectFriendlyVoice();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            if(voice) {
+                utterance.voice = voice;
+                utterance.lang = voice.lang;
+            } else {
+                utterance.lang = 'es-ES';
+            }
+            
+            utterance.rate = profile.rate;
+            utterance.pitch = profile.pitch;
+            utterance.volume = profile.volume;
+            
+            utterance.onstart = () => {
+                document.getElementById('avatarContainer').classList.add('speaking-indicator');
+                document.getElementById('narratorStatus').textContent = 'Hablando...';
+                document.getElementById('statusIndicator').classList.add('bg-orange-500');
+                document.getElementById('statusIndicator').classList.remove('bg-green-500');
+            };
+            
+            utterance.onend = () => {
+                document.getElementById('avatarContainer').classList.remove('speaking-indicator');
+                document.getElementById('narratorStatus').textContent = narratorActive ? 'Esperando siguiente paso...' : 'Narradora en pausa';
+                document.getElementById('statusIndicator').classList.remove('bg-orange-500');
+                document.getElementById('statusIndicator').classList.add(narratorActive ? 'bg-green-500' : 'bg-stone-300');
+            };
+            
+            utterance.onerror = (e) => {
+                console.error('Error de síntesis de voz:', e);
+                document.getElementById('narratorStatus').textContent = 'Error al hablar. Intenta de nuevo.';
+            };
+            
+            speechSynthesis.speak(utterance);
+        }
+
+        // Image Upload Functions
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (file.size > 5 * 1024 * 1024) {
+                alert('La imagen es demasiado grande. Máximo 5MB.');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedImageBase64 = e.target.result;
+                
+                // Mostrar preview
+                const preview = document.getElementById('previewImage');
+                const placeholder = document.getElementById('uploadPlaceholder');
+                const removeBtn = document.getElementById('removeImageBtn');
+                const uploadArea = document.getElementById('uploadArea');
+                
+                preview.src = uploadedImageBase64;
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                removeBtn.classList.remove('hidden');
+                uploadArea.classList.add('has-image');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage(event) {
+            event.stopPropagation();
+            
+            uploadedImageBase64 = null;
+            
+            const preview = document.getElementById('previewImage');
+            const placeholder = document.getElementById('uploadPlaceholder');
+            const removeBtn = document.getElementById('removeImageBtn');
+            const uploadArea = document.getElementById('uploadArea');
+            const input = document.getElementById('imageInput');
+            
+            preview.src = '';
+            preview.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+            removeBtn.classList.add('hidden');
+            uploadArea.classList.remove('has-image');
+            input.value = '';
+        }
+
+        function openAddModal() {
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+            document.getElementById('addRecipeForm').reset();
+            removeImage({ stopPropagation: () => {} });
+        }
+
+        function saveRecipe(e) {
+            e.preventDefault();
+            
+            const newRecipe = {
+                id: Date.now(),
+                title: document.getElementById('newTitle').value,
+                category: document.getElementById('newCategory').value,
+                time: parseInt(document.getElementById('newTime').value),
+                difficulty: "Media",
+                image: uploadedImageBase64, // Guardar la imagen subida
+                description: document.getElementById('newDesc').value,
+                ingredients: document.getElementById('newIngredients').value.split('\n').filter(i => i.trim()),
+                steps: document.getElementById('newSteps').value.split('\n').filter(s => s.trim()),
+                tips: "Receta guardada en tu recetario personal."
+            };
+            
+            recipes.unshift(newRecipe);
+            renderRecipes();
+            closeAddModal();
+            
+            // Mostrar notificación de éxito
+            setTimeout(() => {
+                const notification = document.createElement('div');
+                notification.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 fade-in flex items-center gap-2';
+                notification.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>¡Receta guardada con éxito!</span>
+                `;
+                document.body.appendChild(notification);
+                setTimeout(() => notification.remove(), 3000);
+            }, 300);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if(!currentRecipe) return;
+            
+            if(e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextStep();
+            } else if(e.key === 'ArrowLeft') {
+                e.preventDefault();
+                previousStep();
+            } else if(e.key === 'Escape') {
+                closeRecipeModal();
+            }
+        });
+    </script>
+</body>
+</html>
